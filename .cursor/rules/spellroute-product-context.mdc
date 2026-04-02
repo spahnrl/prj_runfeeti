@@ -1,0 +1,21 @@
+---
+description: What RunFeeti (prj_RunFeeti) does and product assumptions for the agent
+alwaysApply: true
+---
+
+# RunFeeti Product Context (Always Apply)
+
+## Purpose
+
+- **RunFeeti** (project folder `prj_RunFeeti`; Python package `runfeeti`) builds running routes from a start address and a word: it lays out orthogonal “digital” letters on a grid, snaps corners to OpenStreetMap **walk** paths, and outputs turn-by-turn text (CLI) or a Tkinter log (GUI).
+- Optional: each step is prefixed with `[house number + street]` via Nominatim reverse geocoding at the start of each leg.
+
+## Limitations the agent should remember
+
+- Letter alignment uses **map north / east**, not necessarily the local street grid; the GPS trace may not look like the word from above.
+- OSM naming often differs from postal addresses (e.g. Lane vs Drive); fallbacks exist in `geocode.py`.
+- Directions follow OSM pedestrian geometry; users must verify safety, access, and private property.
+
+## User stack
+
+- Python 3.x with a project venv; Windows paths are normal in this workspace.

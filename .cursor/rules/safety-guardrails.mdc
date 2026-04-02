@@ -1,0 +1,22 @@
+---
+description: Safety and non-destructive workflow guardrails for RunFeeti
+alwaysApply: true
+---
+
+# Safety Guardrails (Always Apply)
+
+- Never use destructive commands (`git reset --hard`, `git checkout --`, force delete) unless explicitly requested.
+- Prefer additive changes over destructive rewrites unless the user asked to remove or replace something.
+- Before major edits, explain intended changes in plain language.
+- When uncertain about assumptions, ask for clarification before acting.
+- Surface risks clearly (rate limits, wrong geocoder results, disconnected OSM walking networks).
+
+## External services
+
+- Respect Nominatim and other public geocoder usage policies (rate limits, attribution). Do not bulk-scrape or remove delays where the code intentionally throttles.
+- Do not hard-code API keys; keep optional keys in env or local config if added later.
+
+## Data and UX
+
+- Route directions are advisory only; do not imply legal right-of-way or guaranteed physical access.
+- Preserve existing user-facing behavior unless the user asked to change it; document behavior changes that affect CLI vs GUI.

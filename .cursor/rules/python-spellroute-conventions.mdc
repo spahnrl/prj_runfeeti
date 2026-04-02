@@ -1,0 +1,41 @@
+---
+description: Python style for the RunFeeti project (package runfeeti)
+globs: **/*.py
+alwaysApply: false
+---
+
+# Python conventions (RunFeeti)
+
+## Layout
+
+- Package code lives under `runfeeti/`. Keep CLI (`__main__.py`), GUI (`gui.py` + structured US fields via `us_address.py`), pipeline (`runner.py`), geocoding (`geocode.py`), routing (`routing.py`), directions (`directions.py`), turtle preview (`turtle_map.py`), and letter geometry (`letters.py`) concerns separated.
+- Match existing patterns (dataclasses, type hints, minimal dependencies per module).
+
+## Geocoding and maps
+
+- Forward geocode: use `geocode_address` with fallback queries; keep user-visible notes when an alternate query matched OSM naming.
+- Reverse geocode for step labels: use `lookup_corner_labels` / `enrich_corner_labels` with rate limiting; dedupe by rounded coordinates.
+- Street networks: OSMnx `walk` graphs, projected; `nearest_nodes` requires scipy on projected graphs.
+
+## Concurrency
+
+- Tkinter: never block the UI thread on network or OSMnx work. Run heavy work in a thread and apply UI updates with `root.after` on the main thread.
+- Thread closures: use default arguments (`lambda x=x: ...`) to avoid late-binding bugs.
+
+## CLI and GUI parity
+
+- When adding behavior (new flags, fields, or output sections), update both CLI and GUI unless the user says otherwise.
+
+## Errors
+
+- Raise `ValueError` with actionable messages for user errors (empty address, no graph, disconnected route).
+- Network errors from geocoders: catch geopy/OSError as in existing code; avoid bare `except`.
+
+## Dependencies
+
+- Track runtime deps in `requirements.txt`. Heavy stack (osmnx, geopandas, scipy) is intentional for this project.
+
+## Documentation
+
+- Do not add README or unsolicited markdown unless the user asks.
+- Project rules live under `.cursor/rules/`.

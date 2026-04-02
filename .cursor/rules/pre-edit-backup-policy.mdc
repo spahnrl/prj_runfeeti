@@ -1,0 +1,34 @@
+---
+description: Require pre-edit backup copy for touched files
+alwaysApply: true
+---
+
+# Pre-Edit Backup Policy (Always Apply)
+
+Before editing any existing file, create a backup copy in the project root or a `backups/` folder.
+
+## Backup Naming
+
+- Use a deterministic timestamped name:
+  - `zzz_<original_name>__pre_<YYYYMMDD_HHMMSS><ext>`
+- Example:
+  - `zzz_routing__pre_20260401_143022.py`
+
+## Scope
+
+- Applies to all manual code edits in this repository.
+- If editing multiple files, create one backup per file before first edit.
+- New files do not require a pre-edit backup.
+
+## Session Tracking
+
+- Keep a short list of touched files in session notes/output.
+- At completion, report:
+  - files backed up
+  - files edited
+  - any files intentionally skipped (with reason)
+
+## Safety
+
+- Never overwrite an existing backup file.
+- If backup creation fails, stop and ask before proceeding.
