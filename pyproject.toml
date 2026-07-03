@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "runfeeti"
+version = "0.1.0"
+description = "Build walking routes that spell words using OpenStreetMap walk networks."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "geopy>=2.4",
+  "osmnx>=1.9.0",
+  "networkx>=3.0",
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "geopandas>=0.14",
+  "shapely>=2.0",
+  "streamlit>=1.28.0",
+  "folium>=0.15.0",
+  "streamlit-folium>=0.20.0",
+]
+
+[project.scripts]
+runfeeti = "runfeeti.__main__:main"
+
+[tool.setuptools]
+packages = ["runfeeti"]
+
+[tool.runfeeti]
+test-command = "python -m unittest discover -s tests"
+compile-command = "python -m compileall -q runfeeti streamlit_app.py tests"

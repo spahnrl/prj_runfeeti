@@ -16,7 +16,10 @@ def route_polyline_latlon(routed: RoutedPath) -> List[Tuple[float, float]]:
 
     Empty if the route has fewer than two distinct geometry points.
     """
-    pts = projected_polyline(routed.graph, routed.nodes)
+    pts: list[tuple[float, float]] = []
+    for pt in projected_polyline(routed.graph, routed.nodes):
+        if not pts or pts[-1] != pt:
+            pts.append(pt)
     if len(pts) < 2:
         return []
     crs = routed.graph.graph["crs"]

@@ -21,6 +21,7 @@ from runfeeti.routing import (
     grid_waypoints,
     median_block_meters,
     path_to_edge_gdf,
+    route_weight_attr,
     snap_route,
     start_xy_projected,
 )
@@ -107,10 +108,14 @@ def _orthogonality_fraction(
 
 def _path_length_m(graph: nx.MultiDiGraph, nodes: List[int]) -> float:
     s = 0.0
+    weight_attr = route_weight_attr(graph)
     for u, v in zip(nodes, nodes[1:]):
         if not graph.has_edge(u, v):
             continue
-        data = min(graph[u][v].values(), key=lambda d: d.get("length", float("inf")))
+        data = min(
+            graph[u][v].values(),
+            key=lambda d: d.get(weight_attr, d.get("length", float("inf"))),
+        )
         ln = data.get("length")
         if ln is not None:
             s += float(ln)

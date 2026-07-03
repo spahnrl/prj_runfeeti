@@ -6,7 +6,15 @@ from tkinter import ttk
 from tkinter import scrolledtext
 
 from runfeeti.result import RouteBuildResult
-from runfeeti.runner import build_route_result
+from runfeeti.route_options import (
+    DEFAULT_CLI_RADIUS_MI,
+    DEFAULT_CLI_SEARCH_HALF_MI,
+    DEFAULT_LETTER_GAP,
+    DEFAULT_ROADS_FIRST_PENALTY,
+    RouteOptions,
+    normalize_word,
+    parse_route_options,
+)
 from runfeeti.us_address import (
     abbrev_from_display,
     build_geocode_line,
@@ -17,21 +25,23 @@ from runfeeti.us_address import (
 def _run_build(
     address: str,
     word: str,
-    radius_mi: float,
-    letter_gap: int,
-    block_m_raw: str,
+    options: RouteOptions,
     *,
     optimize_start: bool,
-    search_half_miles: float,
+    roads_first: bool,
 ) -> RouteBuildResult:
+    from runfeeti.runner import build_route_result
+
     return build_route_result(
         address,
         word,
-        radius_mi,
-        letter_gap,
-        block_m_raw,
+        options.radius_mi,
+        options.letter_gap,
+        options.block_m_raw,
         optimize_start=optimize_start,
-        search_half_miles=search_half_miles,
+        search_half_miles=options.search_half_miles,
+        roads_first=roads_first,
+        roads_first_penalty=options.roads_first_penalty,
     )
 
 
@@ -93,16 +103,29 @@ def run_app() -> None:
     row += 1
 
     ttk.Label(opts, text="Radius (mi)").grid(row=0, column=0, sticky=tk.W, padx=(0, 6))
-    radius_var = tk.StringVar(value="1.0")
+    radius_var = tk.StringVar(value=f"{DEFAULT_CLI_RADIUS_MI:g}")
     ttk.Entry(opts, textvariable=radius_var, width=8).grid(row=0, column=1, sticky=tk.W, padx=(0, 16))
 
     ttk.Label(opts, text="Letter gap").grid(row=0, column=2, sticky=tk.W, padx=(0, 6))
-    gap_var = tk.StringVar(value="1")
+    gap_var = tk.StringVar(value=str(DEFAULT_LETTER_GAP))
     ttk.Entry(opts, textvariable=gap_var, width=6).grid(row=0, column=3, sticky=tk.W, padx=(0, 16))
 
     ttk.Label(opts, text="Block m (optional)").grid(row=0, column=4, sticky=tk.W, padx=(0, 6))
     block_var = tk.StringVar()
     ttk.Entry(opts, textvariable=block_var, width=10).grid(row=0, column=5, sticky=tk.W)
+
+    opt_route = ttk.Frame(main)
+    opt_route.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 8))
+    row += 1
+    roads_first_var = tk.BooleanVar(value=True)
+    ttk.Checkbutton(
+        opt_route,
+        text="Prefer street grid (penalize footpath shortcuts)",
+        variable=roads_first_var,
+    ).pack(side=tk.LEFT)
+    ttk.Label(opt_route, text="Penalty").pack(side=tk.LEFT, padx=(12, 4))
+    roads_first_penalty_var = tk.StringVar(value=f"{DEFAULT_ROADS_FIRST_PENALTY:g}")
+    ttk.Entry(opt_route, textvariable=roads_first_penalty_var, width=6).pack(side=tk.LEFT)
 
     opt2 = ttk.Frame(main)
     opt2.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 8))
@@ -114,7 +137,7 @@ def run_app() -> None:
         variable=optimize_grid_var,
     ).pack(side=tk.LEFT)
     ttk.Label(opt2, text="± mi").pack(side=tk.LEFT, padx=(12, 4))
-    search_half_mi_var = tk.StringVar(value="2.0")
+    search_half_mi_var = tk.StringVar(value=f"{DEFAULT_CLI_SEARCH_HALF_MI:g}")
     ttk.Entry(opt2, textvariable=search_half_mi_var, width=6).pack(side=tk.LEFT)
 
     log = scrolledtext.ScrolledText(
@@ -164,10 +187,11 @@ def run_app() -> None:
         set_busy(False)
 
     def do_run() -> None:
-        word = word_var.get().strip()
-        if not word:
+        try:
+            word = normalize_word(word_var.get())
+        except ValueError as e:
             clear_log()
-            append_log("Enter a word to spell.")
+            append_log(str(e))
             return
         try:
             abbr = abbrev_from_display(state_var.get())
@@ -182,16 +206,16 @@ def run_app() -> None:
             append_log(str(e))
             return
         try:
-            rmi = float(radius_var.get().strip())
-            gap = int(gap_var.get().strip())
-            shm = float(search_half_mi_var.get().strip())
-        except ValueError:
+            options = parse_route_options(
+                radius_mi=radius_var.get(),
+                letter_gap=gap_var.get(),
+                block_m_raw=block_var.get(),
+                search_half_miles=search_half_mi_var.get(),
+                roads_first_penalty=roads_first_penalty_var.get(),
+            )
+        except ValueError as e:
             clear_log()
-            append_log("Radius and ± mi must be numbers; letter gap must be a whole number.")
-            return
-        if shm <= 0 or shm > 10:
-            clear_log()
-            append_log("± mi for grid search must be between 0 and 10.")
+            append_log(str(e))
             return
 
         set_busy(True)
@@ -199,7 +223,7 @@ def run_app() -> None:
         append_log(f"Lookup address: {addr}\n")
         if optimize_grid_var.get():
             append_log(
-                f"Grid search enabled (±{shm:g} mi). Fetching larger street network, scanning centers…\n"
+                f"Grid search enabled (±{options.search_half_miles:g} mi). Fetching larger street network, scanning centers…\n"
             )
         append_log(
             "Fetching map data, building route, then resolving [address] per step (rate-limited)...\n"
@@ -210,11 +234,9 @@ def run_app() -> None:
                 res = _run_build(
                     addr,
                     word,
-                    rmi,
-                    gap,
-                    block_var.get(),
+                    options,
                     optimize_start=optimize_grid_var.get(),
-                    search_half_miles=shm,
+                    roads_first=roads_first_var.get(),
                 )
                 root.after(0, lambda r=res: on_done_bundle(r))
             except ValueError as e:

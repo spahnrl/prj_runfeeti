@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 set "APP=%~dp0streamlit_app.py"
-set "PY=
+set "PY="
 
 if exist "%~dp0.venv\Scripts\python.exe" (
   set "PY=%~dp0.venv\Scripts\python.exe"

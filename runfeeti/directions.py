@@ -10,7 +10,7 @@ from geopandas import GeoDataFrame
 from shapely.geometry import Point
 
 from runfeeti.geocode import lookup_corner_labels
-from runfeeti.routing import RoutedPath
+from runfeeti.routing import RoutedPath, route_weight_attr
 
 
 _HW_LABEL = {
@@ -50,8 +50,8 @@ def _turn_phrase(delta: float) -> str:
     if abs(d) < 25:
         return "Continue straight"
     if d > 0:
-        return "Turn left"
-    return "Turn right"
+        return "Turn right"
+    return "Turn left"
 
 
 def _node_latlon(G: nx.MultiDiGraph, node_id: int) -> tuple[float, float]:
@@ -92,9 +92,10 @@ def directions_from_path(routed: RoutedPath) -> List[Step]:
     run_m = 0.0
     pending_intro: str | None = "Start"
     run_first_node: int = nodes[0]
+    weight_attr = route_weight_attr(G)
 
     for u, v in zip(nodes, nodes[1:]):
-        data = min(G[u][v].values(), key=lambda d: d.get("length", float("inf")))
+        data = min(G[u][v].values(), key=lambda d: d.get(weight_attr, d.get("length", float("inf"))))
         geom = data.get("geometry")
         if geom is None:
             xu, yu = G.nodes[u]["x"], G.nodes[u]["y"]
@@ -125,8 +126,8 @@ def directions_from_path(routed: RoutedPath) -> List[Step]:
             prev_bearing = brg
             continue
 
-        intro = pending_intro or _turn_phrase(delta)
-        pending_intro = None
+        intro = pending_intro or "Continue"
+        pending_intro = _turn_phrase(delta)
         lat, lon = _node_latlon(G, run_first_node)
         steps.append(
             Step(

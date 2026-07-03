@@ -125,8 +125,8 @@ def geocode_address(address: str, *, user_agent: str = "runfeeti/0.1") -> Geocod
 
     hint = (
         " Nominatim could not find that exact string. Try the street name as it appears on "
-        "OpenStreetMap (for this area, house numbers on Haggans are listed as Haggans Drive, "
-        "ZIP 78737 in OSM, even if your mail says Lane or 78739)."
+        "OpenStreetMap, check the city/state/ZIP, or omit the ZIP if local OSM address data "
+        "differs from postal records."
     )
     if last_error:
         raise ValueError(f"Could not geocode address: {original!r}. ({last_error}){hint}")

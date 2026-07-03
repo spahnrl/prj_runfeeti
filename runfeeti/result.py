@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import TYPE_CHECKING
 
-from runfeeti.directions import Step
-from runfeeti.routing import RoutedPath
+if TYPE_CHECKING:
+    from runfeeti.directions import Step
+    from runfeeti.routing import RoutedPath
 
 
 @dataclass(frozen=True)
@@ -13,4 +14,4 @@ class RouteBuildResult:
 
     report_text: str
     routed: RoutedPath
-    steps: List[Step]
+    steps: list[Step]

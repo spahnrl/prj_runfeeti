@@ -1,0 +1,13 @@
+---
+description: Keep agent work scoped to the RunFeeti repository
+alwaysApply: true
+---
+
+# Repository Boundary (Always Apply)
+
+- Work inside this repository root: `prj_RunFeeti`.
+- Do not read, edit, generate, move, or delete files outside this repository unless the user explicitly asks for a path outside the repo.
+- Treat `runfeeti/`, `streamlit_app.py`, `requirements.txt`, `README.md`, `.cursor/rules/`, `tools/`, and tests as the normal working surface.
+- Treat `.venv/`, `.git/`, `.idea/`, `__pycache__/`, `.pytest_cache/`, `cache/`, `runfeeti/cache/`, and `backups/` as non-source areas. Do not edit them except to create required pre-edit backups under `backups/`.
+- Prefer standard-library or already-declared dependencies. If a new dependency is truly needed, update project dependency metadata and explain why.
+- Verify changes from the repository root with the smallest command that proves the touched behavior.

@@ -16,6 +16,13 @@ from runfeeti.letters import (
     letter_polyline_intrinsic_cell_span,
     polyline_bounds,
 )
+from runfeeti.route_options import (
+    DEFAULT_LETTER_GAP,
+    DEFAULT_PREVIEW_HEIGHT_CELLS,
+    DEFAULT_PREVIEW_WIDTH_CELLS,
+    DEFAULT_ROADS_FIRST_PENALTY,
+    DEFAULT_UI_SEARCH_HALF_MI,
+)
 
 # Penalized in roads-first MVP routing (walk graph keeps them but avoids when a street exists).
 _FOOTPATH_LIKE_HW: frozenset[str] = frozenset(
@@ -94,7 +101,11 @@ def _edge_base_length_m(graph: nx.MultiDiGraph, u: int, v: int, data: dict) -> f
     return float(math.hypot(xv - xu, yv - yu))
 
 
-def apply_roads_first_mvp_weights(graph: nx.MultiDiGraph, *, penalty: float = 10.0) -> None:
+def apply_roads_first_mvp_weights(
+    graph: nx.MultiDiGraph,
+    *,
+    penalty: float = DEFAULT_ROADS_FIRST_PENALTY,
+) -> None:
     """
     On a projected walk graph, set mvp_weight = length for street-like edges and
     length * penalty for footpath-like highway tags. Sets graph meta so routing
@@ -431,7 +442,7 @@ def median_block_meters(graph: nx.MultiDiGraph) -> float:
 def grid_waypoints(
     word: str,
     *,
-    gap: int = 1,
+    gap: int = DEFAULT_LETTER_GAP,
     block_m: float,
     center_x: float,
     center_y: float,
@@ -492,12 +503,12 @@ def build_grid_preview(
     word: str,
     *,
     radius_m: float,
-    letter_gap: int = 1,
+    letter_gap: int = DEFAULT_LETTER_GAP,
     block_scale: float | None = None,
     roads_first: bool = False,
-    roads_first_penalty: float = 10.0,
-    preview_contract_w: float = 12.0,
-    preview_contract_h: float = 4.0,
+    roads_first_penalty: float = DEFAULT_ROADS_FIRST_PENALTY,
+    preview_contract_w: float = DEFAULT_PREVIEW_WIDTH_CELLS,
+    preview_contract_h: float = DEFAULT_PREVIEW_HEIGHT_CELLS,
 ) -> GridPreviewContext:
     """
     Download walk graph, compute block size and preview waypoints using an explicit cell contract.
@@ -619,12 +630,12 @@ def build_route(
     word: str,
     *,
     radius_m: float,
-    letter_gap: int = 1,
+    letter_gap: int = DEFAULT_LETTER_GAP,
     block_scale: float | None = None,
     optimize_start: bool = False,
-    search_half_miles: float = 5.0,
+    search_half_miles: float = DEFAULT_UI_SEARCH_HALF_MI,
     roads_first: bool = False,
-    roads_first_penalty: float = 10.0,
+    roads_first_penalty: float = DEFAULT_ROADS_FIRST_PENALTY,
 ) -> RoutedPath:
     """
     Geocode is assumed done by caller; lat/lon are the user's starting address.

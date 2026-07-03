@@ -14,6 +14,27 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 
+from runfeeti.route_options import (
+    DEFAULT_LETTER_GAP,
+    DEFAULT_PREVIEW_HEIGHT_CELLS,
+    DEFAULT_PREVIEW_WIDTH_CELLS,
+    DEFAULT_ROADS_FIRST_PENALTY,
+    DEFAULT_UI_RADIUS_MI,
+    DEFAULT_UI_SEARCH_HALF_MI,
+    MAX_LETTER_GAP,
+    MAX_PREVIEW_CELLS,
+    MAX_RADIUS_MI,
+    MAX_ROADS_FIRST_PENALTY,
+    MAX_SEARCH_HALF_MI,
+    MIN_LETTER_GAP,
+    MIN_PREVIEW_CELLS,
+    MIN_RADIUS_MI,
+    MIN_ROADS_FIRST_PENALTY,
+    MIN_SEARCH_HALF_MI,
+    normalize_word,
+    parse_route_options,
+    validate_preview_contract,
+)
 from runfeeti.runner import GridDebugBuildResult, build_grid_debug_result, build_route_result
 from runfeeti.us_address import abbrev_from_display, build_geocode_line, state_display_values
 from runfeeti.web_map import route_polyline_latlon
@@ -156,7 +177,7 @@ def main() -> None:
         "Template uses map north/east, not necessarily your local street grid."
     )
     st.caption(
-        "MVP defaults: **5.0 mi** search radius and **5.0 mi** grid-scan span (when optimize-start is on) "
+        "Default tuning: **5.0 mi** search radius and **5.0 mi** grid-scan span (when optimize-start is on) "
         "for a larger OSM walk network download."
     )
 
@@ -185,10 +206,10 @@ def main() -> None:
 
             with st.expander("Route options", expanded=False):
                 grid_preview_only = st.checkbox(
-                    "Grid preview only (MVP debug)",
+                    "Grid preview only",
                     value=False,
                     help=(
-                        "Skip snapped routing. Letter polyline is scaled to fit inside an explicit "
+                        "Skip snapped routing. The letter polyline is scaled to fit inside an explicit "
                         "W×H cell contract (default 12×4), then drawn in meters per cell (block size). "
                         "Red outline: street box if resolved, else that contract rectangle."
                     ),
@@ -197,9 +218,9 @@ def main() -> None:
                 with c_pw:
                     preview_grid_w = st.number_input(
                         "Preview grid width (cells)",
-                        min_value=2,
-                        max_value=500,
-                        value=12,
+                        min_value=int(MIN_PREVIEW_CELLS),
+                        max_value=int(MAX_PREVIEW_CELLS),
+                        value=DEFAULT_PREVIEW_WIDTH_CELLS,
                         step=1,
                         disabled=not grid_preview_only,
                         help="Explicit contract width in abstract cells (map span = width × block meters).",
@@ -207,29 +228,29 @@ def main() -> None:
                 with c_ph:
                     preview_grid_h = st.number_input(
                         "Preview grid height (cells)",
-                        min_value=2,
-                        max_value=500,
-                        value=4,
+                        min_value=int(MIN_PREVIEW_CELLS),
+                        max_value=int(MAX_PREVIEW_CELLS),
+                        value=DEFAULT_PREVIEW_HEIGHT_CELLS,
                         step=1,
                         disabled=not grid_preview_only,
                         help="Explicit contract height in abstract cells.",
                     )
                 radius_mi = st.number_input(
                     "Search radius (miles)",
-                    min_value=0.25,
-                    max_value=50.0,
-                    value=5.0,
+                    min_value=MIN_RADIUS_MI,
+                    max_value=MAX_RADIUS_MI,
+                    value=DEFAULT_UI_RADIUS_MI,
                     step=0.25,
                     help=(
                         "OSM walk network download radius around the geocoded address. "
-                        "Default 5 mi for MVP testing (bigger download, fewer edge-of-graph gaps)."
+                        "Default 5 mi for route building (bigger download, fewer edge-of-graph gaps)."
                     ),
                 )
                 letter_gap = st.number_input(
                     "Letter gap",
-                    min_value=0,
-                    max_value=10,
-                    value=1,
+                    min_value=MIN_LETTER_GAP,
+                    max_value=MAX_LETTER_GAP,
+                    value=DEFAULT_LETTER_GAP,
                     step=1,
                     help="Extra grid units between letters.",
                 )
@@ -239,14 +260,23 @@ def main() -> None:
                     help="Leave empty to use median OSM edge length in the area.",
                 )
                 roads_first = st.checkbox(
-                    label="Roads-first MVP (penalize footpath shortcuts)",
+                    label="Roads-first routing (penalize footpath shortcuts)",
                     value=True,
                     help="Prefer street grid on the walk network; footways/paths stay allowed if much shorter.",
                 )
+                roads_first_penalty = st.number_input(
+                    "Roads-first penalty",
+                    min_value=MIN_ROADS_FIRST_PENALTY,
+                    max_value=MAX_ROADS_FIRST_PENALTY,
+                    value=DEFAULT_ROADS_FIRST_PENALTY,
+                    step=0.5,
+                    disabled=not roads_first,
+                    help="Multiplier applied to footpath-like edges when roads-first routing is enabled.",
+                )
 
-            with st.expander("Street-grid box (MVP)", expanded=False):
+            with st.expander("Street-grid box", expanded=False):
                 use_street_box = st.checkbox(
-                    "Street-grid box (MVP)",
+                    "Street-grid box",
                     value=False,
                     help=(
                         "Resolve four corners from named OSM streets on the walk graph (report only; "
@@ -282,11 +312,11 @@ def main() -> None:
                 )
                 search_half_miles = st.number_input(
                     "± miles to scan",
-                    min_value=0.1,
-                    max_value=10.0,
-                    value=5.0,
+                    min_value=MIN_SEARCH_HALF_MI,
+                    max_value=MAX_SEARCH_HALF_MI,
+                    value=DEFAULT_UI_SEARCH_HALF_MI,
                     step=0.5,
-                    help="Half-span for optimize-start grid search (default 5 mi for MVP testing).",
+                    help="Half-span for optimize-start grid search (default 5 mi for route building).",
                 )
 
             submitted = st.form_submit_button("Get directions", type="primary", use_container_width=True)
@@ -295,10 +325,12 @@ def main() -> None:
         st.session_state.route_error = None
         st.session_state.route_result = None
         st.session_state.grid_debug_result = None
-        w = word.strip()
-        if not w:
-            st.session_state.route_error = "Enter a word to spell."
-        else:
+        try:
+            w = normalize_word(word)
+        except ValueError as e:
+            st.session_state.route_error = str(e)
+
+        if st.session_state.route_error is None:
             try:
                 abbr = abbrev_from_display(state_choice)
                 addr = build_geocode_line(street, city, abbr, zip_code)
@@ -318,12 +350,21 @@ def main() -> None:
                 ):
                     st.session_state.route_error = (
                         "Street-grid box: enter bottom, top, left, and right street names, "
-                        "or turn off Street-grid box (MVP)."
+                        "or turn off Street-grid box."
                     )
-                elif search_half_miles <= 0 or search_half_miles > 10:
-                    st.session_state.route_error = "± miles for grid search must be between 0 and 10."
                 else:
                     try:
+                        options = parse_route_options(
+                            radius_mi=radius_mi,
+                            letter_gap=letter_gap,
+                            block_m_raw=block_m_raw,
+                            search_half_miles=search_half_miles,
+                            roads_first_penalty=roads_first_penalty,
+                        )
+                        preview_w, preview_h = validate_preview_contract(
+                            preview_grid_w,
+                            preview_grid_h,
+                        )
                         sb_tuple: tuple[str, str, str, str] | None = None
                         if use_street_box:
                             sb_tuple = (
@@ -338,13 +379,14 @@ def main() -> None:
                                 gres = build_grid_debug_result(
                                     addr,
                                     w,
-                                    float(radius_mi),
-                                    int(letter_gap),
-                                    block_m_raw.strip(),
+                                    options.radius_mi,
+                                    options.letter_gap,
+                                    options.block_m_raw,
                                     roads_first=roads_first,
+                                    roads_first_penalty=options.roads_first_penalty,
                                     street_box=sb_tuple,
-                                    preview_contract_w=float(preview_grid_w),
-                                    preview_contract_h=float(preview_grid_h),
+                                    preview_contract_w=preview_w,
+                                    preview_contract_h=preview_h,
                                 )
                                 status.write("Done.")
                             st.session_state.grid_debug_result = gres
@@ -357,12 +399,13 @@ def main() -> None:
                                 res = build_route_result(
                                     addr,
                                     w,
-                                    float(radius_mi),
-                                    int(letter_gap),
-                                    block_m_raw.strip(),
+                                    options.radius_mi,
+                                    options.letter_gap,
+                                    options.block_m_raw,
                                     optimize_start=optimize_start,
-                                    search_half_miles=float(search_half_miles),
+                                    search_half_miles=options.search_half_miles,
                                     roads_first=roads_first,
+                                    roads_first_penalty=options.roads_first_penalty,
                                     street_box=sb_tuple,
                                 )
                                 status.write("Done.")

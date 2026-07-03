@@ -16,7 +16,7 @@ Letters follow **map north/east**, not necessarily your local street grid, so th
 ## Requirements
 
 - **Python 3.x** (project tested with 3.13).
-- Dependencies in **`requirements.txt`** (includes **osmnx**, **geopy**, **networkx**, **numpy**, **scipy**, and transitive geospatial libraries).
+- Dependencies in **`requirements.txt`** (includes **osmnx**, **geopy**, **networkx**, **numpy**, **scipy**, **geopandas**, **shapely**, and Streamlit/Folium web UI packages).
 
 ## Setup
 
@@ -31,6 +31,13 @@ Run from the **project root** so the `runfeeti` package is importable.
 
 If you **rename the project folder**, recreate the venv or fix activation scripts so `VIRTUAL_ENV` points at the new path.
 
+For editable command installation, use:
+
+```text
+pip install -e .
+runfeeti "123 Main St, Austin, TX" RICK --radius-mi 1.0
+```
+
 ## Command line
 
 ```text
@@ -42,8 +49,11 @@ Useful options:
 - `--letter-gap` — extra grid units between letters.
 - `--block-m` — override meters per template unit (default: median edge length).
 - `--map` — open turtle map after printing directions.
+- `--version` — print the installed RunFeeti version.
 - `--optimize-start` — search within ±`--search-half-mi` (default `2.0`) for a template center with a more grid-like walk mesh (larger OSM download, slower).
-- `--search-half-mi` — half-span for that search (validated between 0 and 10 when used from CLI).
+- `--search-half-mi` — half-span for that search (validated between 0.1 and 10 when used from CLI).
+- `--no-roads-first` - allow footpath-like shortcuts without the street-grid penalty.
+- `--roads-first-penalty` - multiplier for footpath-like edges when roads-first routing is on (default: `10`).
 
 ## Web UI (Streamlit)
 
@@ -63,7 +73,28 @@ Uses a **sidebar** for address, word, and options (expanders for route tuning an
 python -m runfeeti --gui
 ```
 
+After `pip install -e .`, the same GUI is available with:
+
+```text
+runfeeti --gui
+```
+
 Structured address fields, **Get directions**, **Turtle map**, optional **Find better grid start** and ± mi field.
+
+## Verify
+
+Run these checks from the project root before handing off changes:
+
+```text
+.\tools\verify.ps1
+```
+
+That script runs the same checks as:
+
+```text
+python -m unittest discover -s tests
+python -m compileall -q runfeeti streamlit_app.py tests
+```
 
 ## Limitations and safety
 
